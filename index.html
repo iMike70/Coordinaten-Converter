@@ -260,11 +260,11 @@
             const latitudeDM = document.getElementById('latitude-dm-input').value;
             const longitudeDM = document.getElementById('longitude-dm-input').value;
 
-            const latitudeDD = parseDM(latitudeDM);
-            const longitudeDD = parseDM(longitudeDM);
+            const latitudeDD = parseDMorDMS(latitudeDM);
+            const longitudeDD = parseDMorDMS(longitudeDM);
 
             if (latitudeDD === null || longitudeDD === null) {
-                alert('Voer geldige DM-coördinaten in (bijv. 52° 16.58478\' N).');
+                alert('Voer geldige DM-coördinaten in (bijv. 52° 16.58478\' N of 6° 53.610168\' E).');
                 return;
             }
 
@@ -276,11 +276,11 @@
             const latitudeDMS = document.getElementById('latitude-dms-input').value;
             const longitudeDMS = document.getElementById('longitude-dms-input').value;
 
-            const latitudeDD = parseDMS(latitudeDMS);
-            const longitudeDD = parseDMS(longitudeDMS);
+            const latitudeDD = parseDMorDMS(latitudeDMS);
+            const longitudeDD = parseDMorDMS(longitudeDMS);
 
             if (latitudeDD === null || longitudeDD === null) {
-                alert('Voer geldige DMS-coördinaten in (bijv. 52° 16\' 35.0868\" N).');
+                alert('Voer geldige DMS-coördinaten in (bijv. 52° 16\' 35.0868\" N of 6° 53\' 36.6108\" E).');
                 return;
             }
 
@@ -358,35 +358,34 @@
             return `${degrees}° ${minutes}' ${seconds.toFixed(2)}" ${direction}`;
         }
 
-        // Helper: Parse DM to DD
-        function parseDM(dm) {
-            const regex = /^(\d+)°\s*([\d.]+)'\s*([NS])$/i;
-            const match = dm.trim().match(regex);
-            if (!match) return null;
+        // Helper: Parse DM or DMS to DD
+        function parseDMorDMS(input) {
+            // Try DM format first (e.g., 52° 16.58478' N or 6° 53.610168' E)
+            const dmRegex = /^(\d+)°\s*([\d.]+)'\s*([NSEW])$/i;
+            const dmMatch = input.trim().match(dmRegex);
+            if (dmMatch) {
+                const degrees = parseFloat(dmMatch[1]);
+                const minutes = parseFloat(dmMatch[2]);
+                const direction = dmMatch[3].toUpperCase();
+                let decimal = degrees + (minutes / 60);
+                if (direction === 'S' || direction === 'W') decimal *= -1;
+                return decimal;
+            }
 
-            const degrees = parseFloat(match[1]);
-            const minutes = parseFloat(match[2]);
-            const direction = match[3].toUpperCase();
+            // Try DMS format (e.g., 52° 16' 35.0868" N or 6° 53' 36.6108" E)
+            const dmsRegex = /^(\d+)°\s*(\d+)'\s*([\d.]+)"\s*([NSEW])$/i;
+            const dmsMatch = input.trim().match(dmsRegex);
+            if (dmsMatch) {
+                const degrees = parseFloat(dmsMatch[1]);
+                const minutes = parseFloat(dmsMatch[2]);
+                const seconds = parseFloat(dmsMatch[3]);
+                const direction = dmsMatch[4].toUpperCase();
+                let decimal = degrees + (minutes / 60) + (seconds / 3600);
+                if (direction === 'S' || direction === 'W') decimal *= -1;
+                return decimal;
+            }
 
-            let decimal = degrees + (minutes / 60);
-            if (direction === 'S') decimal *= -1;
-            return decimal;
-        }
-
-        // Helper: Parse DMS to DD
-        function parseDMS(dms) {
-            const regex = /^(\d+)°\s*(\d+)'\s*([\d.]+)"\s*([NS])$/i;
-            const match = dms.trim().match(regex);
-            if (!match) return null;
-
-            const degrees = parseFloat(match[1]);
-            const minutes = parseFloat(match[2]);
-            const seconds = parseFloat(match[3]);
-            const direction = match[4].toUpperCase();
-
-            let decimal = degrees + (minutes / 60) + (seconds / 3600);
-            if (direction === 'S') decimal *= -1;
-            return decimal;
+            return null;
         }
     </script>
 </body>
