@@ -107,31 +107,6 @@
         .location-button:hover {
             background-color: #27ae60;
         }
-        .tab-container {
-            display: flex;
-            margin-bottom: 15px;
-            border-bottom: 1px solid #ddd;
-        }
-        .tab {
-            flex: 1;
-            padding: 12px;
-            text-align: center;
-            background-color: #ecf0f1;
-            border: none;
-            cursor: pointer;
-            font-weight: bold;
-            border-radius: 5px 5px 0 0;
-        }
-        .tab.active {
-            background-color: #3498db;
-            color: white;
-        }
-        .tab-content {
-            display: none;
-        }
-        .tab-content.active {
-            display: block;
-        }
     </style>
 </head>
 <body>
@@ -177,8 +152,13 @@
         </div>
     </div>
 
+    <!-- Load Leaflet for the map -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Load proj4js and mgrs for accurate MGRS conversion -->
+    <script src="https://cdn.jsdelivr.net/npm/proj4@2.10.0/dist/proj4.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mgrs@1.0.0/mgrs.min.js"></script>
+    
     <script>
         let map;
 
@@ -222,7 +202,7 @@
 
             // Update MGRS
             try {
-                const mgrs = toMGRS(latitudeDD, longitudeDD);
+                const mgrs = convertDDToMGRS(latitudeDD, longitudeDD);
                 document.getElementById('result-mgrs').textContent = mgrs;
             } catch (e) {
                 document.getElementById('result-mgrs').textContent = 'Fout bij MGRS-conversie';
@@ -284,13 +264,9 @@
             return `${degrees}° ${minutes}' ${seconds.toFixed(2)}" ${direction}`;
         }
 
-        // MGRS Conversion Functions
-        function toMGRS(lat, lon) {
+        // MGRS Conversion using mgrs library
+        function convertDDToMGRS(lat, lon) {
             return mgrs.forward([lon, lat]);
-        }
-
-        function fromMGRS(mgrsCoord) {
-            return mgrs.inverse(mgrsCoord);
         }
     </script>
 </body>
