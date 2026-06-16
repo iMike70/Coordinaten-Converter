@@ -107,9 +107,30 @@
         .location-button:hover {
             background-color: #27ae60;
         }
-        .loading {
-            color: #e74c3c;
-            font-style: italic;
+        .tab-container {
+            display: flex;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #ddd;
+        }
+        .tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            background-color: #ecf0f1;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 5px 5px 0 0;
+        }
+        .tab.active {
+            background-color: #3498db;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
         }
     </style>
 </head>
@@ -117,16 +138,53 @@
     <div class="container">
         <h1>Coördinaten Converter</h1>
         
-        <div class="input-group">
-            <label for="latitude-dd">Breedtegraad (DD):</label>
-            <input type="text" id="latitude-dd" placeholder="Bijv. 52.2764130" oninput="updateAllCoordinates()">
+        <div class="tab-container">
+            <button class="tab active" onclick="switchTab('dd-tab')">DD Invoeren</button>
+            <button class="tab" onclick="switchTab('dm-tab')">DM Invoeren</button>
+            <button class="tab" onclick="switchTab('dms-tab')">DMS Invoeren</button>
         </div>
-        <div class="input-group">
-            <label for="longitude-dd">Lengtegraad (DD):</label>
-            <input type="text" id="longitude-dd" placeholder="Bijv. 6.8935028" oninput="updateAllCoordinates()">
-        </div>
-        <button class="location-button" onclick="getCurrentLocation()">Gebruik Huidige Locatie</button>
 
+        <!-- DD Input Tab -->
+        <div id="dd-tab" class="tab-content active">
+            <div class="input-group">
+                <label for="latitude-dd-input">Breedtegraad (DD):</label>
+                <input type="text" id="latitude-dd-input" placeholder="Bijv. 52.2764130">
+            </div>
+            <div class="input-group">
+                <label for="longitude-dd-input">Lengtegraad (DD):</label>
+                <input type="text" id="longitude-dd-input" placeholder="Bijv. 6.8935028">
+            </div>
+            <button onclick="convertFromDD()">Omzetten</button>
+            <button class="location-button" onclick="getCurrentLocation()">Gebruik Huidige Locatie</button>
+        </div>
+
+        <!-- DM Input Tab -->
+        <div id="dm-tab" class="tab-content">
+            <div class="input-group">
+                <label for="latitude-dm-input">Breedtegraad (DM):</label>
+                <input type="text" id="latitude-dm-input" placeholder="Bijv. 52° 16.58478' N">
+            </div>
+            <div class="input-group">
+                <label for="longitude-dm-input">Lengtegraad (DM):</label>
+                <input type="text" id="longitude-dm-input" placeholder="Bijv. 6° 53.610168' E">
+            </div>
+            <button onclick="convertFromDM()">Omzetten</button>
+        </div>
+
+        <!-- DMS Input Tab -->
+        <div id="dms-tab" class="tab-content">
+            <div class="input-group">
+                <label for="latitude-dms-input">Breedtegraad (DMS):</label>
+                <input type="text" id="latitude-dms-input" placeholder="Bijv. 52° 16' 35.0868\" N">
+            </div>
+            <div class="input-group">
+                <label for="longitude-dms-input">Lengtegraad (DMS):</label>
+                <input type="text" id="longitude-dms-input" placeholder="Bijv. 6° 53' 36.6108\" E">
+            </div>
+            <button onclick="convertFromDMS()">Omzetten</button>
+        </div>
+
+        <!-- Results Section -->
         <div id="results-container" class="result" style="display: none;">
             <div class="result-title">Alle Coördinaatformaten:</div>
             <div class="result-item">
@@ -144,11 +202,6 @@
                 <span id="result-dms" class="result-value"></span>
                 <button class="copy-button" onclick="copyToClipboard('result-dms')">Kopieer</button>
             </div>
-            <div class="result-item">
-                <span class="result-label">MGRS:</span>
-                <span id="result-mgrs" class="result-value"><span class="loading">MGRS-bibliotheek laden...</span></span>
-                <button class="copy-button" onclick="copyToClipboard('result-mgrs')">Kopieer</button>
-            </div>
         </div>
 
         <div id="map-container" style="display: none;">
@@ -156,27 +209,9 @@
         </div>
     </div>
 
-    <!-- Load Leaflet for the map -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
-    <!-- Load proj4js for MGRS conversion -->
-    <script src="https://cdn.jsdelivr.net/npm/proj4@2.10.0/dist/proj4.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mgrs@1.0.0/mgrs.min.js"></script>
-    
     <script>
         let map;
-        let mgrsLoaded = false;
-
-        // Initialize proj4js for MGRS
-        function initMGRS() {
-            if (typeof proj4 !== 'undefined' && typeof mgrs !== 'undefined') {
-                mgrsLoaded = true;
-                document.getElementById('result-mgrs').innerHTML = '';
-                updateAllCoordinates();
-            } else {
-                setTimeout(initMGRS, 500); // Retry after 500ms
-            }
-        }
 
         // Initialize the map
         function initMap(lat, lng) {
@@ -193,16 +228,67 @@
             document.getElementById('map-container').style.display = 'block';
         }
 
-        // Update all coordinate formats
-        function updateAllCoordinates() {
-            const latitudeDD = parseFloat(document.getElementById('latitude-dd').value);
-            const longitudeDD = parseFloat(document.getElementById('longitude-dd').value);
+        // Switch tabs
+        function switchTab(tabId) {
+            const tabs = document.querySelectorAll('.tab');
+            const contents = document.querySelectorAll('.tab-content');
+
+            tabs.forEach(tab => tab.classList.remove('active'));
+            contents.forEach(content => content.classList.remove('active'));
+
+            event.target.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+            document.getElementById('results-container').style.display = 'none';
+            document.getElementById('map-container').style.display = 'none';
+        }
+
+        // Convert from DD
+        function convertFromDD() {
+            const latitudeDD = parseFloat(document.getElementById('latitude-dd-input').value);
+            const longitudeDD = parseFloat(document.getElementById('longitude-dd-input').value);
 
             if (isNaN(latitudeDD) || isNaN(longitudeDD)) {
-                document.getElementById('results-container').style.display = 'none';
+                alert('Voer geldige decimale coördinaten in.');
                 return;
             }
 
+            updateResults(latitudeDD, longitudeDD);
+        }
+
+        // Convert from DM
+        function convertFromDM() {
+            const latitudeDM = document.getElementById('latitude-dm-input').value;
+            const longitudeDM = document.getElementById('longitude-dm-input').value;
+
+            const latitudeDD = parseDM(latitudeDM);
+            const longitudeDD = parseDM(longitudeDM);
+
+            if (latitudeDD === null || longitudeDD === null) {
+                alert('Voer geldige DM-coördinaten in (bijv. 52° 16.58478\' N).');
+                return;
+            }
+
+            updateResults(latitudeDD, longitudeDD);
+        }
+
+        // Convert from DMS
+        function convertFromDMS() {
+            const latitudeDMS = document.getElementById('latitude-dms-input').value;
+            const longitudeDMS = document.getElementById('longitude-dms-input').value;
+
+            const latitudeDD = parseDMS(latitudeDMS);
+            const longitudeDD = parseDMS(longitudeDMS);
+
+            if (latitudeDD === null || longitudeDD === null) {
+                alert('Voer geldige DMS-coördinaten in (bijv. 52° 16\' 35.0868\" N).');
+                return;
+            }
+
+            updateResults(latitudeDD, longitudeDD);
+        }
+
+        // Update results and map
+        function updateResults(latitudeDD, longitudeDD) {
             // Update DD
             document.getElementById('result-dd').textContent = `${latitudeDD.toFixed(6)}, ${longitudeDD.toFixed(6)}`;
 
@@ -216,18 +302,6 @@
             const longitudeDMS = convertDecimalToDMS(longitudeDD, 'E', 'W');
             document.getElementById('result-dms').textContent = `${latitudeDMS}, ${longitudeDMS}`;
 
-            // Update MGRS (if library is loaded)
-            if (mgrsLoaded) {
-                try {
-                    const mgrsCoord = mgrs.forward([longitudeDD, latitudeDD]);
-                    document.getElementById('result-mgrs').textContent = mgrsCoord;
-                } catch (e) {
-                    document.getElementById('result-mgrs').textContent = 'Fout bij MGRS-conversie';
-                }
-            } else {
-                document.getElementById('result-mgrs').innerHTML = '<span class="loading">MGRS-bibliotheek laden...</span>';
-            }
-
             // Show results and map
             document.getElementById('results-container').style.display = 'block';
             initMap(latitudeDD, longitudeDD);
@@ -240,9 +314,9 @@
                     (position) => {
                         const lat = position.coords.latitude;
                         const lng = position.coords.longitude;
-                        document.getElementById('latitude-dd').value = lat.toFixed(6);
-                        document.getElementById('longitude-dd').value = lng.toFixed(6);
-                        updateAllCoordinates();
+                        document.getElementById('latitude-dd-input').value = lat.toFixed(6);
+                        document.getElementById('longitude-dd-input').value = lng.toFixed(6);
+                        convertFromDD();
                     },
                     (error) => {
                         alert('Fout bij het ophalen van je locatie: ' + error.message);
@@ -284,8 +358,36 @@
             return `${degrees}° ${minutes}' ${seconds.toFixed(2)}" ${direction}`;
         }
 
-        // Initialize MGRS library on page load
-        window.onload = initMGRS;
+        // Helper: Parse DM to DD
+        function parseDM(dm) {
+            const regex = /^(\d+)°\s*([\d.]+)'\s*([NS])$/i;
+            const match = dm.trim().match(regex);
+            if (!match) return null;
+
+            const degrees = parseFloat(match[1]);
+            const minutes = parseFloat(match[2]);
+            const direction = match[3].toUpperCase();
+
+            let decimal = degrees + (minutes / 60);
+            if (direction === 'S') decimal *= -1;
+            return decimal;
+        }
+
+        // Helper: Parse DMS to DD
+        function parseDMS(dms) {
+            const regex = /^(\d+)°\s*(\d+)'\s*([\d.]+)"\s*([NS])$/i;
+            const match = dms.trim().match(regex);
+            if (!match) return null;
+
+            const degrees = parseFloat(match[1]);
+            const minutes = parseFloat(match[2]);
+            const seconds = parseFloat(match[3]);
+            const direction = match[4].toUpperCase();
+
+            let decimal = degrees + (minutes / 60) + (seconds / 3600);
+            if (direction === 'S') decimal *= -1;
+            return decimal;
+        }
     </script>
 </body>
 </html>
