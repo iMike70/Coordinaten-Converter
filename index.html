@@ -107,6 +107,10 @@
         .location-button:hover {
             background-color: #27ae60;
         }
+        .loading {
+            color: #e74c3c;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -142,7 +146,7 @@
             </div>
             <div class="result-item">
                 <span class="result-label">MGRS:</span>
-                <span id="result-mgrs" class="result-value"></span>
+                <span id="result-mgrs" class="result-value"><span class="loading">MGRS-bibliotheek laden...</span></span>
                 <button class="copy-button" onclick="copyToClipboard('result-mgrs')">Kopieer</button>
             </div>
         </div>
@@ -155,12 +159,24 @@
     <!-- Load Leaflet for the map -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
-    <!-- Load proj4js and mgrs for accurate MGRS conversion -->
+    <!-- Load proj4js for MGRS conversion -->
     <script src="https://cdn.jsdelivr.net/npm/proj4@2.10.0/dist/proj4.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mgrs@1.0.0/mgrs.min.js"></script>
     
     <script>
         let map;
+        let mgrsLoaded = false;
+
+        // Initialize proj4js for MGRS
+        function initMGRS() {
+            if (typeof proj4 !== 'undefined' && typeof mgrs !== 'undefined') {
+                mgrsLoaded = true;
+                document.getElementById('result-mgrs').innerHTML = '';
+                updateAllCoordinates();
+            } else {
+                setTimeout(initMGRS, 500); // Retry after 500ms
+            }
+        }
 
         // Initialize the map
         function initMap(lat, lng) {
@@ -200,12 +216,16 @@
             const longitudeDMS = convertDecimalToDMS(longitudeDD, 'E', 'W');
             document.getElementById('result-dms').textContent = `${latitudeDMS}, ${longitudeDMS}`;
 
-            // Update MGRS
-            try {
-                const mgrs = convertDDToMGRS(latitudeDD, longitudeDD);
-                document.getElementById('result-mgrs').textContent = mgrs;
-            } catch (e) {
-                document.getElementById('result-mgrs').textContent = 'Fout bij MGRS-conversie';
+            // Update MGRS (if library is loaded)
+            if (mgrsLoaded) {
+                try {
+                    const mgrsCoord = mgrs.forward([longitudeDD, latitudeDD]);
+                    document.getElementById('result-mgrs').textContent = mgrsCoord;
+                } catch (e) {
+                    document.getElementById('result-mgrs').textContent = 'Fout bij MGRS-conversie';
+                }
+            } else {
+                document.getElementById('result-mgrs').innerHTML = '<span class="loading">MGRS-bibliotheek laden...</span>';
             }
 
             // Show results and map
@@ -264,10 +284,8 @@
             return `${degrees}° ${minutes}' ${seconds.toFixed(2)}" ${direction}`;
         }
 
-        // MGRS Conversion using mgrs library
-        function convertDDToMGRS(lat, lon) {
-            return mgrs.forward([lon, lat]);
-        }
+        // Initialize MGRS library on page load
+        window.onload = initMGRS;
     </script>
 </body>
 </html>
